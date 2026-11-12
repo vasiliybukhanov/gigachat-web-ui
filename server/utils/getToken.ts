@@ -9,16 +9,19 @@ export const getToken = async (): Promise<string> => {
   if (cached && Date.now() < cached.expiresAt - 2 * 60_0000)
     return cached.value;
 
-  const apiKey = useRuntimeConfig().apiKey;
+  const config = useRuntimeConfig();
 
   const res = await $fetch<TokenResponse>(
     "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
     {
       method: "POST",
       headers: {
-        Authorization: `Basic ${apiKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
         RqUID: crypto.randomUUID(),
+        Authorization: `Basic ${config.apiKey}`,
       },
+      body: new URLSearchParams({ scope: config.scope }),
     },
   );
 

@@ -5,13 +5,23 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "dev:secure": "cross-env NODE_EXTRA_CA_CERTS=./russian_cas.pem nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@nuxt/eslint": "1.17.0",
+    "eslint": "^10.14.0",
     "nuxt": "^4.6.4",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.7",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
   }
 }
