@@ -7,3 +7,7 @@ export function toErrorMessage(e: unknown): string {
   if (typeof e === 'string') return e
   return 'Неизвестная ошибка'
 }
+
+export function isGigaError(chunk: ChatChunk): chunk is GigaErrorChunk {
+  return 'message' in chunk && !('choices' in chunk)
+}
