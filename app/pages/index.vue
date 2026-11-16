@@ -113,49 +113,56 @@ function stop() {
 <template>
   <main class="chat">
     <div ref="messagesEl" class="messages">
-      <p v-if="!messages.length" class="empty">
-        Задайте вопрос — ответ будет появляться по мере генерации.
-      </p>
-      <div v-for="(m, i) in messages" :key="i" class="message" :class="m.role">
-        {{ m.content }}
-        <span
-          v-if="
-            m.role === 'assistant' && isLoading && i === messages.length - 1
-          "
-          class="cursor"
-          >▍</span
+      <div class="messages-inner">
+        <p v-if="!messages.length" class="empty">
+          Задайте вопрос — ответ будет появляться по мере генерации.
+        </p>
+        <div
+          v-for="(m, i) in messages"
+          :key="i"
+          class="message"
+          :class="m.role"
         >
+          <ChatMarkdown
+            v-if="m.role === 'assistant'"
+            :text="m.content"
+            :streaming="isLoading && i === messages.length - 1"
+          />
+          <template v-else>{{ m.content }}</template>
+        </div>
       </div>
     </div>
 
     <form class="composer" @submit.prevent="sendMessage">
-      <div class="field">
-        <input
-          v-model="input"
-          :disabled="isLoading"
-          placeholder="Спросите о чём угодно…"
-          autofocus
-        />
-        <button
-          v-if="isLoading"
-          type="button"
-          class="icon stop"
-          title="Остановить"
-          aria-label="Остановить"
-          @click="stop"
-        >
-          ■
-        </button>
-        <button
-          v-else
-          type="submit"
-          class="icon send"
-          :disabled="!input.trim()"
-          title="Отправить"
-          aria-label="Отправить"
-        >
-          ↑
-        </button>
+      <div class="composer-inner">
+        <div class="field">
+          <input
+            v-model="input"
+            :disabled="isLoading"
+            placeholder="Спросите о чём угодно…"
+            autofocus
+          />
+          <button
+            v-if="isLoading"
+            type="button"
+            class="icon stop"
+            title="Остановить"
+            aria-label="Остановить"
+            @click="stop"
+          >
+            ■
+          </button>
+          <button
+            v-else
+            type="submit"
+            class="icon send"
+            :disabled="!input.trim()"
+            title="Отправить"
+            aria-label="Отправить"
+          >
+            ↑
+          </button>
+        </div>
       </div>
     </form>
   </main>
@@ -184,12 +191,10 @@ body {
 
 <style lang="css" scoped>
 .chat {
-  max-width: 768px;
-  margin: 0 auto;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 16px 16px 0;
+  padding: 16px 0 0;
   box-sizing: border-box;
 }
 .messages {
@@ -197,10 +202,16 @@ body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+.messages-inner {
+  max-width: 768px;
+  min-height: 100%;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 8px 4px 12px;
+  padding: 8px 16px 12px;
+  box-sizing: border-box;
 }
 .messages::-webkit-scrollbar {
   width: 8px;
@@ -234,10 +245,28 @@ body {
   max-width: 100%;
   background: transparent;
   padding: 2px 4px;
+  white-space: normal;
 }
 .composer {
+  position: relative;
   flex-shrink: 0;
-  padding: 8px 0 12px;
+  padding: 8px 16px max(24px, env(safe-area-inset-bottom));
+}
+.composer::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 768px;
+  height: 36px;
+  background: linear-gradient(to top, #fff, rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+.composer-inner {
+  max-width: 768px;
+  margin: 0 auto;
 }
 .field {
   display: flex;
@@ -292,13 +321,5 @@ body {
   background: #f1f3f7;
   color: #0d0d0d;
   border: 1px solid #dfe1e7;
-}
-.cursor {
-  animation: blink 1s infinite;
-}
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
 }
 </style>
