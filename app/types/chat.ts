@@ -27,10 +27,10 @@ export interface ChatCompletionChunk {
   } | null
 }
 
-export interface GigaErrorChunk {
+export interface ChatErrorChunk {
   message: string
   code?: number
   status?: number
 }
 
-export type ChatChunk = ChatCompletionChunk | GigaErrorChunk
+export type ChatChunk = ChatCompletionChunk | ChatErrorChunk

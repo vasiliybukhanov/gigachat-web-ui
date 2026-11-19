@@ -1,4 +1,4 @@
-import { GigaErrorChunk } from '~/types/chat'
+import { ChatErrorChunk } from '~/types/chat'
 
 export default defineEventHandler(async (event) => {
   const { messages } = await readBody(event)
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
   } catch (err) {
     if (!closed) {
       console.error('[chat] stream failed:', err)
-      const payload: GigaErrorChunk = {
+      const payload: ChatErrorChunk = {
         status: 502,
         message: 'Ошибка соединения с GigaChat',
       }

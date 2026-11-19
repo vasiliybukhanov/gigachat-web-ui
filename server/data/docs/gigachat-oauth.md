@@ -41,7 +41,7 @@
 
 ## Типизация чанков
 
-- Дискриминированное объединение: `ChatCompletionChunk | GigaErrorChunk` + type guard
+- Дискриминированное объединение: `ChatCompletionChunk | ChatErrorChunk` + type guard
   `isGigaError` (`'message' in chunk && !('choices' in chunk)`).
 - После гарда TS сужает тип: к `choices` можно обращаться без `?.`, ветка ошибки явная.
 - `JSON.parse` возвращает any — `as ChatChunk` доверяет своей типизации (взрослая проверка — zod).
