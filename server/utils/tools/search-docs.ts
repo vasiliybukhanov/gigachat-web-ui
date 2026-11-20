@@ -1,9 +1,11 @@
-import { readFile, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
-
 import type { Tool } from './types'
 
-const DOCS_DIR = join(process.cwd(), 'server', 'data', 'docs')
+// Заметки лежат в server/assets/docs и подключены как serverAssets nitro:
+// они попадают в бандл (.output), поэтому чтение через useStorage('assets:server')
+// работает и на serverless-платформах (Vercel и др.), где readFile от
+// process.cwd() не видит исходных файлов проекта.
+const DOCS_STORAGE = 'assets:server'
+const DOCS_BASE_KEY = 'docs'
 const FRAGMENT_MAX_LENGTH = 200
 const DEFAULT_MAX_RESULTS = 5
 
@@ -12,7 +14,16 @@ interface DocFragment {
   fragment: string
 }
 
-// Обрезает строку до FRAGMENT_MAX_LENGTH, окно центрируется на вхождении запроса
+interface SearchOutcome {
+  results: DocFragment[]
+  errors: string[]
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+// Обрезает строку до FRAGMENT_MAX_LENGTH, окно центрируется на первом совпадении
 function makeFragment(line: string, matchIndex: number): string {
   if (line.length <= FRAGMENT_MAX_LENGTH) {
     return line.trim()
@@ -21,34 +32,81 @@ function makeFragment(line: string, matchIndex: number): string {
   return line.slice(start, start + FRAGMENT_MAX_LENGTH).trim()
 }
 
-async function searchDocsFiles(
-  query: string,
-  maxResults: number,
-): Promise<DocFragment[]> {
-  const needle = query.toLowerCase()
-  const entries = await readdir(DOCS_DIR, { withFileTypes: true })
-  const mdFiles = entries.filter(
-    (entry) => entry.isFile() && entry.name.endsWith('.md'),
-  )
-
-  const results: DocFragment[] = []
-
-  for (const entry of mdFiles) {
-    const text = await readFile(join(DOCS_DIR, entry.name), 'utf-8')
-
-    for (const line of text.split('\n')) {
-      const index = line.toLowerCase().indexOf(needle)
-      if (index === -1) {
-        continue
-      }
-      results.push({ file: entry.name, fragment: makeFragment(line, index) })
-      if (results.length >= maxResults) {
-        return results
+// score = сколько слов запроса встретилось в строке; одно совпадение уже кандидат,
+// строки с большим числом слов поднимаются выше при сортировке
+function scoreLine(
+  line: string,
+  words: string[],
+): { score: number; firstMatch: number } {
+  const lower = line.toLowerCase()
+  let score = 0
+  let firstMatch = -1
+  for (const word of words) {
+    const index = lower.indexOf(word)
+    if (index !== -1) {
+      score += 1
+      if (firstMatch === -1 || index < firstMatch) {
+        firstMatch = index
       }
     }
   }
+  return { score, firstMatch }
+}
 
-  return results
+async function searchDocsFiles(
+  query: string,
+  maxResults: number,
+): Promise<SearchOutcome> {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const storage = useStorage(DOCS_STORAGE)
+  const errors: string[] = []
+  const candidates: (DocFragment & { score: number })[] = []
+
+  let keys: string[]
+  try {
+    keys = (await storage.getKeys(DOCS_BASE_KEY)).filter((key) =>
+      key.endsWith('.md'),
+    )
+  } catch (err) {
+    return {
+      results: [],
+      errors: [`не удалось получить список заметок: ${errorMessage(err)}`],
+    }
+  }
+
+  for (const key of keys) {
+    // unstorage разделяет уровни ключей через ':', но на некоторых драйверах
+    // встречается и '/', поэтому срезаем всё до последнего разделителя из обоих
+    const file = key.split(/[:/]/).pop() ?? key
+
+    let text: string
+    try {
+      const content = await storage.getItem(key)
+      if (typeof content !== 'string') {
+        errors.push(`${file}: файл недоступен`)
+        continue
+      }
+      text = content
+    } catch (err) {
+      errors.push(`${file}: ошибка чтения — ${errorMessage(err)}`)
+      continue
+    }
+
+    for (const line of text.split('\n')) {
+      const { score, firstMatch } = scoreLine(line, words)
+      if (score < 1) {
+        continue
+      }
+      candidates.push({
+        file,
+        fragment: makeFragment(line, firstMatch),
+        score,
+      })
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score)
+  return { results: candidates.slice(0, maxResults), errors }
 }
 
 export const searchDocs: Tool = {
@@ -83,11 +141,23 @@ export const searchDocs: Tool = {
       return 'пустой запрос — нечего искать'
     }
 
-    const found = await searchDocsFiles(query, maxResults)
-    if (found.length === 0) {
-      return 'ничего не найдено'
+    let outcome: SearchOutcome
+    try {
+      outcome = await searchDocsFiles(query, maxResults)
+    } catch (err) {
+      return `ошибка поиска по заметкам: ${errorMessage(err)}`
     }
 
-    return found.map(({ file, fragment }) => `[${file}] ${fragment}`).join('\n')
+    const lines = outcome.results.map(
+      ({ file, fragment }) => `[${file}] ${fragment}`,
+    )
+    for (const err of outcome.errors) {
+      lines.push(`ошибка: ${err}`)
+    }
+
+    if (lines.length === 0) {
+      return 'ничего не найдено'
+    }
+    return lines.join('\n')
   },
 }
