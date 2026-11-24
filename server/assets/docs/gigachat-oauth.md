@@ -2,14 +2,14 @@
 
 ## Секреты
 
-- API-ключ лежит в `.env` как `NUXT_GIGA_AUTH_KEY`. Префикс `NUXT_` — чтобы переменная
+- API-ключ лежит в `.env` как `NUXT_API_KEY`. Префикс `NUXT_` — чтобы переменная
   попала в серверную часть Nuxt.
 - Ключ никогда не выходит на клиент: OAuth и запросы к модели делает только Nitro-роут.
 
 ## OAuth: обмен ключа на access-токен
 
 - `POST https://ngw.devices.sberbank.ru:9443/api/v2/oauth`
-- Заголовки: `Authorization: Basic <NUXT_GIGA_AUTH_KEY>` и `RqUID: <uuid>` (id запроса).
+- Заголовки: `Authorization: Basic <NUXT_API_KEY>` и `RqUID: <uuid>` (id запроса).
 - Тело: `{ "scope": "GIGACHAT_API_PERS" }` (личный тариф).
 - Ответ: `{ "access_token": "...", "expires_at": <epoch ms> }`.
 - Токен живёт ~30 минут → кешируем синглтоном в `server/utils/getToken.ts`
@@ -42,6 +42,6 @@
 ## Типизация чанков
 
 - Дискриминированное объединение: `ChatCompletionChunk | ChatErrorChunk` + type guard
-  `isGigaError` (`'message' in chunk && !('choices' in chunk)`).
+  `isChatError` (`'message' in chunk && !('choices' in chunk)`).
 - После гарда TS сужает тип: к `choices` можно обращаться без `?.`, ветка ошибки явная.
 - `JSON.parse` возвращает any — `as ChatChunk` доверяет своей типизации (взрослая проверка — zod).

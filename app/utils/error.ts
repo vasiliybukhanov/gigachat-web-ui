@@ -8,6 +8,6 @@ export function toErrorMessage(e: unknown): string {
   return 'Неизвестная ошибка'
 }
 
-export function isGigaError(chunk: ChatChunk): chunk is ChatErrorChunk {
+export function isChatError(chunk: ChatChunk): chunk is ChatErrorChunk {
   return 'message' in chunk && !('choices' in chunk)
 }

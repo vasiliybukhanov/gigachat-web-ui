@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ChatChunk, ChatMessage } from '~/types/chat'
-import { isGigaError } from '~/utils/error'
+import { isChatError } from '~/utils/error'
 
 const messages = ref<ChatMessage[]>([])
 const input = ref('')
@@ -75,7 +75,7 @@ async function sendMessage() {
           }
 
           const chunk = parseChunk(data) as ChatChunk
-          if (isGigaError(chunk)) {
+          if (isChatError(chunk)) {
             reply.content = chunk.message
             finished = true
             updated = true
